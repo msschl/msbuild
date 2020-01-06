@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Xml;
 using Microsoft.Build.BackEnd;
@@ -21,6 +22,7 @@ using LegacyThreadingData = Microsoft.Build.Execution.LegacyThreadingData;
 using TargetDotNetFrameworkVersion = Microsoft.Build.Utilities.TargetDotNetFrameworkVersion;
 using ToolLocationHelper = Microsoft.Build.Utilities.ToolLocationHelper;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.Build.UnitTests.BackEnd
 {
@@ -29,124 +31,12 @@ namespace Microsoft.Build.UnitTests.BackEnd
     /// </summary>
     public class TaskBuilder_Tests : ITargetBuilderCallback
     {
-#if FEATURE_CODEDOM
-        /// <summary>
-        /// Task definition for a task that outputs items containing null metadata.
-        /// </summary>
-        private static string s_nullMetadataTaskContents =
-@"using Microsoft.Build.Framework;
-using Microsoft.Build.Utilities;
-using System.Collections;
-using System.Collections.Generic;
-
-namespace NullMetadataTask
-{
-    public class NullMetadataTask : Task
-    {
-        [Output]
-        public ITaskItem[] OutputItems
-        {
-            get;
-            set;
-        }
-
-        public override bool Execute()
-        {
-            OutputItems = new ITaskItem[1];
-
-            IDictionary<string, string> metadata = new Dictionary<string, string>();
-            metadata.Add(""a"", null);
-
-            OutputItems[0] = new TaskItem(""foo"", (IDictionary)metadata);
-
-            return true;
-        }
-    }
-}
-";
-
-        /// <summary>
-        /// Task definition for task that outputs items in a variety of ways, used to 
-        /// test definition of the DefiningProject* metadata for task outputs. 
-        /// </summary>
-        private static string s_itemCreationTaskContents =
-            @"using Microsoft.Build.Framework;
-using Microsoft.Build.Utilities;
-using System.Collections;
-using System.Collections.Generic;
-
-namespace ItemCreationTask
-{
-    public class ItemCreationTask : Task
-    {
-        public ITaskItem[] InputItemsToPassThrough
-        {
-            get;
-            set;
-        }
-
-        public ITaskItem[] InputItemsToCopy
-        {
-            get;
-            set;
-        }
-
-        [Output]
-        public ITaskItem[] PassedThroughOutputItems
-        {
-            get;
-            set;
-        }
-
-        [Output]
-        public ITaskItem[] CreatedOutputItems
-        {
-            get;
-            set;
-        }
-
-        [Output]
-        public ITaskItem[] CopiedOutputItems
-        {
-            get;
-            set;
-        }
-
-        [Output]
-        public string OutputString
-        {
-            get;
-            set;
-        }
-
-        public override bool Execute()
-        {
-            PassedThroughOutputItems = InputItemsToPassThrough;
-
-            CopiedOutputItems = new ITaskItem[InputItemsToCopy.Length];
-
-            for (int i = 0; i < InputItemsToCopy.Length; i++)
-            {
-                CopiedOutputItems[i] = new TaskItem(InputItemsToCopy[i]);
-            }
-
-            CreatedOutputItems = new ITaskItem[2];
-            CreatedOutputItems[0] = new TaskItem(""Foo"");
-            CreatedOutputItems[1] = new TaskItem(""Bar"");
-
-            OutputString = ""abc;def;ghi"";
-
-            return true;
-        }
-    }
-}
-";
-#endif
-
         /// <summary>
         /// The mock component host and logger
         /// </summary>
         private MockHost _host;
+
+        private readonly ITestOutputHelper _testOutput;
 
         /// <summary>
         /// The temporary project we use to run the test
@@ -156,9 +46,10 @@ namespace ItemCreationTask
         /// <summary>
         /// Prepares the environment for the test.
         /// </summary>
-        public TaskBuilder_Tests()
+        public TaskBuilder_Tests(ITestOutputHelper output)
         {
             _host = new MockHost();
+            _testOutput = output;
             _testProject = CreateTestProject();
         }
 
@@ -462,7 +353,7 @@ namespace ItemCreationTask
             loggers.Add(logger);
             bool result = project.Build("t", loggers);
 
-            Assert.Equal(true, result);
+            Assert.True(result);
             logger.AssertLogDoesntContain("[]");
             logger.AssertLogDoesntContain("MSB4118");
             logger.AssertLogDoesntContain("MSB3031");
@@ -489,7 +380,7 @@ namespace ItemCreationTask
             loggers.Add(logger);
             bool result = project.Build("t", loggers);
 
-            Assert.Equal(false, result);
+            Assert.False(result);
             logger.AssertLogContains("MSB3031");
         }
 
@@ -512,7 +403,7 @@ namespace ItemCreationTask
             loggers.Add(logger);
             bool result = project.Build("t", loggers);
 
-            Assert.Equal(false, result);
+            Assert.False(result);
             logger.AssertLogContains("MSB3031");
         }
 
@@ -542,11 +433,10 @@ namespace ItemCreationTask
             loggers.Add(logger);
             bool result = project.Build("t", loggers);
 
-            Assert.Equal(true, result);
+            Assert.True(result);
             logger.AssertLogContains("[.ext]");
         }
 
-#if FEATURE_CODEDOM
         /// <summary>
         /// Verify that properties can be passed in to a task and out as items, despite
         /// having illegal characters for a file name
@@ -573,7 +463,7 @@ namespace ItemCreationTask
             loggers.Add(logger);
             bool result = project.Build("t", loggers);
 
-            Assert.Equal(true, result);
+            Assert.True(result);
             logger.AssertLogContains("[||illegal||]");
         }
 
@@ -584,7 +474,7 @@ namespace ItemCreationTask
         [Trait("Category", "mono-osx-failing")]
         public void NullMetadataOnOutputItems()
         {
-            string customTaskPath = CustomTaskHelper.GetAssemblyForTask(s_nullMetadataTaskContents);
+            string customTaskPath = Assembly.GetExecutingAssembly().Location;
 
             string projectContents = @"<Project ToolsVersion=`msbuilddefaulttoolsversion` xmlns=`msbuildnamespace`>
   <UsingTask TaskName=`NullMetadataTask` AssemblyFile=`" + customTaskPath + @"` />
@@ -598,7 +488,7 @@ namespace ItemCreationTask
   </Target>
 </Project>";
 
-            MockLogger logger = ObjectModelHelpers.BuildProjectExpectSuccess(projectContents);
+            MockLogger logger = ObjectModelHelpers.BuildProjectExpectSuccess(projectContents, _testOutput);
             logger.AssertLogContains("[foo: ]");
         }
 
@@ -609,17 +499,7 @@ namespace ItemCreationTask
         [Trait("Category", "mono-osx-failing")]
         public void NullMetadataOnLegacyOutputItems()
         {
-            string referenceAssembliesPath = ToolLocationHelper.GetPathToDotNetFrameworkReferenceAssemblies(TargetDotNetFrameworkVersion.VersionLatest);
-
-            if (String.IsNullOrEmpty(referenceAssembliesPath))
-            {
-                // fall back to the .NET Framework -- they should always exist there. 
-                referenceAssembliesPath = ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.VersionLatest);
-            }
-
-            string[] referenceAssemblies = new string[] { Path.Combine(referenceAssembliesPath, "System.dll"), Path.Combine(referenceAssembliesPath, "Microsoft.Build.Framework.dll"), Path.Combine(referenceAssembliesPath, "Microsoft.Build.Utilities.v4.0.dll") };
-
-            string customTaskPath = CustomTaskHelper.GetAssemblyForTask(s_nullMetadataTaskContents, referenceAssemblies);
+            string customTaskPath = Assembly.GetExecutingAssembly().Location;
 
             string projectContents = @"<Project ToolsVersion=`msbuilddefaulttoolsversion` xmlns=`msbuildnamespace`>
   <UsingTask TaskName=`NullMetadataTask` AssemblyFile=`" + customTaskPath + @"` />
@@ -633,10 +513,9 @@ namespace ItemCreationTask
   </Target>
 </Project>";
 
-            MockLogger logger = ObjectModelHelpers.BuildProjectExpectSuccess(projectContents);
+            MockLogger logger = ObjectModelHelpers.BuildProjectExpectSuccess(projectContents, _testOutput);
             logger.AssertLogContains("[foo: ]");
         }
-#endif
 
 #if FEATURE_CODETASKFACTORY
         /// <summary>
@@ -675,7 +554,7 @@ namespace ItemCreationTask
                       </Target>
                     </Project>";
 
-            MockLogger logger = ObjectModelHelpers.BuildProjectExpectSuccess(projectContents);
+            MockLogger logger = ObjectModelHelpers.BuildProjectExpectSuccess(projectContents, _testOutput);
             logger.AssertLogContains("[foo: ]");
         }
 
@@ -716,20 +595,20 @@ namespace ItemCreationTask
                       </Target>
                     </Project>";
 
-            MockLogger logger = ObjectModelHelpers.BuildProjectExpectSuccess(projectContents);
+            MockLogger logger = ObjectModelHelpers.BuildProjectExpectSuccess(projectContents, _testOutput);
             logger.AssertLogContains("[foo: ]");
         }
 #endif
 
-#if FEATURE_CODEDOM
         /// <summary>
         /// Validates that the defining project metadata is set (or not set) as expected in 
         /// various task output-related operations, using a task built against the current 
         /// version of MSBuild.  
         /// </summary>
+        [Fact]
         public void ValidateDefiningProjectMetadataOnTaskOutputs()
         {
-            string customTaskPath = CustomTaskHelper.GetAssemblyForTask(s_itemCreationTaskContents);
+            string customTaskPath = Assembly.GetExecutingAssembly().Location;
             ValidateDefiningProjectMetadataOnTaskOutputsHelper(customTaskPath);
         }
 
@@ -742,19 +621,9 @@ namespace ItemCreationTask
         [Trait("Category", "mono-osx-failing")]
         public void ValidateDefiningProjectMetadataOnTaskOutputs_LegacyItems()
         {
-            string referenceAssembliesPath = ToolLocationHelper.GetPathToDotNetFrameworkReferenceAssemblies(TargetDotNetFrameworkVersion.VersionLatest);
-
-            if (String.IsNullOrEmpty(referenceAssembliesPath))
-            {
-                referenceAssembliesPath = ToolLocationHelper.GetPathToDotNetFramework(TargetDotNetFrameworkVersion.VersionLatest);
-            }
-
-            string[] referenceAssemblies = new string[] { Path.Combine(referenceAssembliesPath, "System.dll"), Path.Combine(referenceAssembliesPath, "Microsoft.Build.Framework.dll"), Path.Combine(referenceAssembliesPath, "Microsoft.Build.Utilities.v4.0.dll") };
-
-            string customTaskPath = CustomTaskHelper.GetAssemblyForTask(s_itemCreationTaskContents, referenceAssemblies);
+            string customTaskPath = Assembly.GetExecutingAssembly().Location;
             ValidateDefiningProjectMetadataOnTaskOutputsHelper(customTaskPath);
         }
-#endif
 
 #if FEATURE_APARTMENT_STATE
         /// <summary>
@@ -878,11 +747,11 @@ namespace ItemCreationTask
 
         #endregion
 
-        /*********************************************************************************
-         * 
-         *                                     Helpers
-         * 
-         *********************************************************************************/
+/*********************************************************************************
+ * 
+ *                                     Helpers
+ * 
+ *********************************************************************************/
 
         /// <summary>
         /// Helper method for validating the setting of defining project metadata on items 
@@ -931,7 +800,8 @@ namespace ItemCreationTask
                 File.WriteAllText(projectAPath, ObjectModelHelpers.CleanupFileContents(projectAContents));
                 File.WriteAllText(projectBPath, ObjectModelHelpers.CleanupFileContents(projectBContents));
 
-                MockLogger logger = ObjectModelHelpers.BuildTempProjectFileExpectSuccess("a.proj");
+                MockLogger logger = new MockLogger(_testOutput);
+                ObjectModelHelpers.BuildTempProjectFileExpectSuccess("a.proj", logger);
                 logger.AssertNoWarnings();
             }
             finally
@@ -1023,7 +893,6 @@ namespace ItemCreationTask
         }
 #endif
 
-#if FEATURE_CODEDOM
         /// <summary>
         /// Helper to create the STA test task.
         /// </summary>
@@ -1037,7 +906,7 @@ namespace ClassLibrary2
 {" + (requireSTA ? "[RunInSTA]" : String.Empty) + @"
     public class ThreadTask : ITask
     {
-        #region ITask Members
+#region ITask Members
 
         public IBuildEngine BuildEngine
         {
@@ -1090,12 +959,11 @@ namespace ClassLibrary2
             set;
         }
 
-        #endregion
+#endregion
     }
 }";
             return CustomTaskHelper.GetAssemblyForTask(taskContents);
         }
-#endif
 
         /// <summary>
         /// Creates a test project.
@@ -1175,7 +1043,7 @@ namespace ClassLibrary2
         /// </summary>
         private class MockHost : MockLoggingService, IBuildComponentHost, IBuildComponent
         {
-            #region IBuildComponentHost Members
+#region IBuildComponentHost Members
 
             /// <summary>
             /// The config cache
@@ -1326,9 +1194,9 @@ namespace ClassLibrary2
             {
             }
 
-            #endregion
+#endregion
 
-            #region IBuildComponent Members
+#region IBuildComponent Members
 
             /// <summary>
             /// Sets the component host
@@ -1347,7 +1215,7 @@ namespace ClassLibrary2
                 throw new NotImplementedException();
             }
 
-            #endregion
+#endregion
         }
     }
 }

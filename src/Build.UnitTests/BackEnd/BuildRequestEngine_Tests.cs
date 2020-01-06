@@ -27,8 +27,6 @@ namespace Microsoft.Build.UnitTests.BackEnd
 
     public class BuildRequestEngine_Tests : IDisposable
     {
-        private delegate void EndpointOperationDelegate(NodeEndpointInProc endpoint);
-
         internal class MockRequestBuilder : IRequestBuilder, IBuildComponent
         {
             public bool ThrowExceptionOnRequest
@@ -164,25 +162,19 @@ namespace Microsoft.Build.UnitTests.BackEnd
 
                 foreach (string target in _entry.Request.Targets)
                 {
-                    result.AddResultsForTarget(target, new TargetResult(new TaskItem[1] { new TaskItem("include", _entry.RequestConfiguration.ProjectFullPath) }, completeSuccess ? TestUtilities.GetSuccessResult() : TestUtilities.GetStopWithErrorResult()));
+                    result.AddResultsForTarget(target, new TargetResult(new TaskItem[1] { new TaskItem("include", _entry.RequestConfiguration.ProjectFullPath) }, completeSuccess ? BuildResultUtilities.GetSuccessResult() : BuildResultUtilities.GetStopWithErrorResult()));
                 }
                 _entry.Complete(result);
             }
 
             public void RaiseRequestComplete(BuildRequestEntry entry)
             {
-                if (null != OnBuildRequestCompleted)
-                {
-                    OnBuildRequestCompleted(entry);
-                }
+                OnBuildRequestCompleted?.Invoke(entry);
             }
 
             public void RaiseRequestBlocked(BuildRequestEntry entry, int blockingId, string blockingTarget)
             {
-                if (null != OnBuildRequestBlocked)
-                {
-                    OnBuildRequestBlocked(entry, blockingId, blockingTarget, null);
-                }
+                OnBuildRequestBlocked?.Invoke(entry, blockingId, blockingTarget, null);
             }
 
             public void ContinueRequest()
@@ -326,7 +318,6 @@ namespace Microsoft.Build.UnitTests.BackEnd
         /// This should cause that request to cancel and fail.
         /// </summary>
         [Fact]
-        [Trait("CrashesOnNetCore", "true")]
         public void TestEngineShutdownWhileActive()
         {
             BuildRequestData data = new BuildRequestData("TestFile", new Dictionary<string, string>(), "TestToolsVersion", new string[0], null);
@@ -355,7 +346,6 @@ namespace Microsoft.Build.UnitTests.BackEnd
         /// This test verifies that issuing a simple request results in a successful completion.
         /// </summary>
         [Fact]
-        [Trait("CrashesOnNetCore", "true")]
         public void TestSimpleBuildScenario()
         {
             BuildRequestData data = new BuildRequestData("TestFile", new Dictionary<string, string>(), "TestToolsVersion", new string[0], null);
@@ -383,7 +373,6 @@ namespace Microsoft.Build.UnitTests.BackEnd
         /// engine interface.
         /// </summary>
         [Fact]
-        [Trait("CrashesOnNetCore", "true")]
         public void TestBuildWithChildren()
         {
             BuildRequestData data = new BuildRequestData("TestFile", new Dictionary<string, string>(), "TestToolsVersion", new string[0], null);
@@ -408,7 +397,7 @@ namespace Microsoft.Build.UnitTests.BackEnd
             // Wait for the new requests to be spawned by the builder
             WaitForEvent(_newRequestEvent, "NewRequestEvent");
             Assert.Equal(1, _newRequest_Request.BuildRequests[0].ConfigurationId);
-            Assert.Equal(1, _newRequest_Request.BuildRequests[0].Targets.Count);
+            Assert.Single(_newRequest_Request.BuildRequests[0].Targets);
             Assert.Equal("requiredTarget1", _newRequest_Request.BuildRequests[0].Targets[0]);
 
             // Wait for a moment, because the build request engine thread may not have gotten around
@@ -418,7 +407,7 @@ namespace Microsoft.Build.UnitTests.BackEnd
 
             // Report a result to satisfy the build request
             BuildResult result = new BuildResult(_newRequest_Request.BuildRequests[0]);
-            result.AddResultsForTarget("requiredTarget1", TestUtilities.GetEmptySucceedingTargetResult());
+            result.AddResultsForTarget("requiredTarget1", BuildResultUtilities.GetEmptySucceedingTargetResult());
             _engine.UnblockBuildRequest(new BuildRequestUnblocker(result));
 
             // Continue the request.
@@ -437,8 +426,6 @@ namespace Microsoft.Build.UnitTests.BackEnd
         /// the build will continue and complete successfully.
         /// </summary>
         [Fact]
-        [Trait("CrashesOnNetCore", "true")]
-
         public void TestBuildWithNewConfiguration()
         {
             BuildRequestData data = new BuildRequestData(Path.GetFullPath("TestFile"), new Dictionary<string, string>(), "TestToolsVersion", new string[0], null);
@@ -478,12 +465,12 @@ namespace Microsoft.Build.UnitTests.BackEnd
             WaitForEvent(_newRequestEvent, "NewRequestEvent");
             Assert.Equal(2, _newRequest_Request.BuildRequests[0].ConfigurationId);
             Assert.Equal(2, _newRequest_Request.BuildRequests[0].ConfigurationId);
-            Assert.Equal(1, _newRequest_Request.BuildRequests[0].Targets.Count);
+            Assert.Single(_newRequest_Request.BuildRequests[0].Targets);
             Assert.Equal("requiredTarget1", _newRequest_Request.BuildRequests[0].Targets[0]);
 
             // Report a result to satisfy the build request
             BuildResult result = new BuildResult(_newRequest_Request.BuildRequests[0]);
-            result.AddResultsForTarget("requiredTarget1", TestUtilities.GetEmptySucceedingTargetResult());
+            result.AddResultsForTarget("requiredTarget1", BuildResultUtilities.GetEmptySucceedingTargetResult());
             _engine.UnblockBuildRequest(new BuildRequestUnblocker(result));
 
             // Continue the request
@@ -507,20 +494,6 @@ namespace Microsoft.Build.UnitTests.BackEnd
             BuildRequest request = new BuildRequest(1 /* submission id */, _nodeRequestId++, configurationId, targets, null, BuildEventContext.Invalid, null);
             request.GlobalRequestId = _globalRequestId++;
             return request;
-        }
-
-        private void WaitForEngineStatus(BuildRequestEngineStatus expectedStatus)
-        {
-            DateTime time = DateTime.Now;
-            while (DateTime.Now - time > new TimeSpan(0, 0, 5))
-            {
-                WaitForEvent(_engineStatusChangedEvent, "EngineStatusChanged");
-                if (expectedStatus == _engineStatusChanged_Status)
-                {
-                    return;
-                }
-            }
-            Assert.True(false, "Engine failed to change to status " + expectedStatus);
         }
 
         private void VerifyEngineStatus(BuildRequestEngineStatus expectedStatus)

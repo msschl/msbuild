@@ -79,10 +79,12 @@ namespace Microsoft.Build.Utilities
         // need to store the actual task instance.
         private readonly ITask _taskInstance;
 
+#if FEATURE_APPDOMAIN
         /// <summary>
         /// Object to make this class thread-safe.
         /// </summary>
         private readonly Object _locker = new Object();
+#endif // FEATURE_APPDOMAIN
 
         /// <summary>
         /// Gets the name of the parent task.
@@ -154,9 +156,9 @@ namespace Microsoft.Build.Utilities
         /// </summary>
         public bool HasLoggedErrors { get; private set; }
 
-        #endregion
+#endregion
 
-        #region Utility methods
+#region Utility methods
 
         /// <summary>
         /// Extracts the message code (if any) prefixed to the given message string. Message code prefixes must match the
@@ -233,9 +235,9 @@ namespace Microsoft.Build.Utilities
             string resourceString = FormatResourceString(resourceName, null);
             return resourceString;
         }
-        #endregion
+#endregion
 
-        #region Message logging methods
+#region Message logging methods
 
         /// <summary>
         /// Logs a message using the specified string.
@@ -291,12 +293,12 @@ namespace Microsoft.Build.Utilities
             }
 
             BuildEngine.LogMessageEvent(e);
-#if _DEBUG
+#if DEBUG
             // Assert that the message does not contain an error code.  Only errors and warnings
             // should have error codes.
             string errorCode;
             ResourceUtilities.ExtractMessageCode(true /* only msbuild codes */, message, out errorCode);
-            Debug.Assert(errorCode == null, errorCode, "This message contains an error code (" + errorCode + "), yet it was logged as a regular message: " + message);
+            ErrorUtilities.VerifyThrow(errorCode == null, "This message contains an error code (" + errorCode + "), yet it was logged as a regular message: " + message);
 #endif
         }
 
@@ -462,18 +464,18 @@ namespace Microsoft.Build.Utilities
             ErrorUtilities.VerifyThrowArgumentNull(messageResourceName, nameof(messageResourceName));
 
             LogMessage(importance, FormatResourceString(messageResourceName, messageArgs));
-#if _DEBUG
+#if DEBUG
             // Assert that the message does not contain an error code.  Only errors and warnings
             // should have error codes.
             string errorCode;
             ResourceUtilities.ExtractMessageCode(true /* only msbuild codes */, FormatResourceString(messageResourceName, messageArgs), out errorCode);
-            Debug.Assert(errorCode == null, errorCode, FormatResourceString(messageResourceName, messageArgs));
+            ErrorUtilities.VerifyThrow(errorCode == null, errorCode, FormatResourceString(messageResourceName, messageArgs));
 #endif
         }
 
-        #endregion
+#endregion
 
-        #region ExternalProjectStarted/Finished logging methods
+#region ExternalProjectStarted/Finished logging methods
 
         /// <summary>
         /// Small helper for logging the custom ExternalProjectStarted build event
@@ -517,9 +519,9 @@ namespace Microsoft.Build.Utilities
             BuildEngine.LogCustomEvent(epf);
         }
 
-        #endregion
+#endregion
 
-        #region Command line logging methods
+#region Command line logging methods
 
         /// <summary>
         /// Logs the command line for a task's underlying tool/executable/shell command.
@@ -557,9 +559,9 @@ namespace Microsoft.Build.Utilities
             BuildEngine.LogMessageEvent(e);
         }
 
-        #endregion
+#endregion
 
-        #region Error logging methods
+#region Error logging methods
 
         /// <summary>
         /// Logs an error using the specified string.
@@ -610,13 +612,11 @@ namespace Microsoft.Build.Utilities
             // we can do is throw.
             ErrorUtilities.VerifyThrowInvalidOperation(BuildEngine != null, "LoggingBeforeTaskInitialization", message);
 
-#if false
             // All of our errors should have an error code, so the user has something
             // to look up in the documentation. To help find errors without error codes,
             // temporarily uncomment this line and run the unit tests.
             //if (null == errorCode) File.AppendAllText("c:\\errorsWithoutCodes", message + "\n");
             // We don't have a Debug.Assert for this, because it would be triggered by <Error> and <Warning> tags.
-#endif
 
             // If the task has missed out all location information, add the location of the task invocation;
             // that gives the user something.
@@ -694,14 +694,15 @@ namespace Microsoft.Build.Utilities
                 subcategory = FormatResourceString(subcategoryResourceName);
             }
 
-#if _DEBUG
+#if DEBUG
             // If the message does have a message code, LogErrorWithCodeFromResources
             // should have been called instead, so that the errorCode field gets populated.
             // Check this only in debug, to avoid the cost of attempting to extract a
             // message code when there probably isn't one.
             string messageCode;
             string throwAwayMessageBody = ResourceUtilities.ExtractMessageCode(true /* only msbuild codes */, FormatResourceString(messageResourceName, messageArgs), out messageCode);
-            Debug.Assert(messageCode == null || messageCode.Length == 0, "Called LogErrorFromResources instead of LogErrorWithCodeFromResources, but message '" + throwAwayMessageBody + "' does have an error code '" + messageCode + "'");
+
+            ErrorUtilities.VerifyThrow(messageCode == null || messageCode.Length == 0, "Called LogErrorFromResources instead of LogErrorWithCodeFromResources, but message '" + throwAwayMessageBody + "' does have an error code '" + messageCode + "'");
 #endif
 
             LogError
@@ -877,9 +878,9 @@ namespace Microsoft.Build.Utilities
             LogError(null, null, null, file, 0, 0, 0, 0, message);
         }
 
-        #endregion
+#endregion
 
-        #region Warning logging methods
+#region Warning logging methods
 
         /// <summary>
         /// Logs a warning using the specified string.
@@ -930,13 +931,11 @@ namespace Microsoft.Build.Utilities
             // we can do is throw.
             ErrorUtilities.VerifyThrowInvalidOperation(BuildEngine != null, "LoggingBeforeTaskInitialization", message);
 
-#if false
             // All of our warnings should have an error code, so the user has something
             // to look up in the documentation. To help find warnings without error codes,
             // temporarily uncomment this line and run the unit tests.
             //if (null == warningCode) File.AppendAllText("c:\\warningsWithoutCodes", message + "\n");
             // We don't have a Debug.Assert for this, because it would be triggered by <Error> and <Warning> tags.
-#endif
 
             // If the task has missed out all location information, add the location of the task invocation;
             // that gives the user something.
@@ -1019,7 +1018,7 @@ namespace Microsoft.Build.Utilities
             // Check this only in debug, to avoid the cost of attempting to extract a
             // message code when there probably isn't one.
             string throwAwayMessageBody = ResourceUtilities.ExtractMessageCode(true /* only msbuild codes */, FormatResourceString(messageResourceName, messageArgs), out string messageCode);
-            Debug.Assert(string.IsNullOrEmpty(messageCode), "Called LogWarningFromResources instead of LogWarningWithCodeFromResources, but message '" + throwAwayMessageBody + "' does have an error code '" + messageCode + "'");
+            ErrorUtilities.VerifyThrow(string.IsNullOrEmpty(messageCode), "Called LogWarningFromResources instead of LogWarningWithCodeFromResources, but message '" + throwAwayMessageBody + "' does have an error code '" + messageCode + "'");
 #endif
 
             LogWarning
@@ -1155,9 +1154,9 @@ namespace Microsoft.Build.Utilities
             LogWarning(message);
         }
 
-        #endregion
+#endregion
 
-        #region Bulk logging methods
+#region Bulk logging methods
 
         /// <summary>
         /// Logs errors/warnings/messages for each line of text in the given file. Errors/warnings are only logged for lines that
@@ -1310,9 +1309,9 @@ namespace Microsoft.Build.Utilities
             return isError;
         }
 
-        #endregion
+#endregion
 
-        #region Telemetry logging methods
+#region Telemetry logging methods
 
         /// <summary>
         /// Logs telemetry with the specified event name and properties.
@@ -1324,10 +1323,10 @@ namespace Microsoft.Build.Utilities
             (BuildEngine as IBuildEngine5)?.LogTelemetry(eventName, properties);
         }
 
-        #endregion
+#endregion
 
 #if FEATURE_APPDOMAIN
-        #region AppDomain Code
+#region AppDomain Code
 
         /// <summary>
         /// InitializeLifetimeService is called when the remote object is activated. 
@@ -1413,7 +1412,7 @@ namespace Microsoft.Build.Utilities
             }
         }
 
-        #endregion
+#endregion
 #endif
     }
 }

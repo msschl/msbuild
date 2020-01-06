@@ -36,7 +36,7 @@ namespace Microsoft.Build.CommandLine
 #if CLR2COMPATIBILITY
         IBuildEngine3
 #else
-        IBuildEngine5
+        IBuildEngine6
 #endif
     {
         /// <summary>
@@ -167,20 +167,10 @@ namespace Microsoft.Build.CommandLine
         private RegisteredTaskObjectCacheBase _registeredTaskObjectCache;
 #endif
 
-#if !FEATURE_NAMED_PIPES_FULL_DUPLEX
-        private string _clientToServerPipeHandle;
-        private string _serverToClientPipeHandle;
-#endif
-
         /// <summary>
         /// Constructor.
         /// </summary>
-        public OutOfProcTaskHostNode(
-#if !FEATURE_NAMED_PIPES_FULL_DUPLEX
-            string clientToServerPipeHandle,
-            string serverToClientPipeHandle
-#endif       
-            )
+        public OutOfProcTaskHostNode()
         {
             // We don't know what the current build thinks this variable should be until RunTask(), but as a fallback in case there are 
             // communications before we get the configuration set up, just go with what was already in the environment from when this node
@@ -189,11 +179,6 @@ namespace Microsoft.Build.CommandLine
 
 #if FEATURE_APPDOMAIN
             AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(ExceptionHandling.UnhandledExceptionHandler);
-#endif
-
-#if !FEATURE_NAMED_PIPES_FULL_DUPLEX
-            _clientToServerPipeHandle = clientToServerPipeHandle;
-            _serverToClientPipeHandle = serverToClientPipeHandle;
 #endif
 
             _receivedPackets = new Queue<INodePacket>();
@@ -457,6 +442,19 @@ namespace Microsoft.Build.CommandLine
 
         #endregion
 
+        #region IBuildEngine6 Implementation
+
+        /// <summary>
+        /// Gets the global properties for the current project.
+        /// </summary>
+        /// <returns>An <see cref="IReadOnlyDictionary{String, String}" /> containing the global properties of the current project.</returns>
+        public IReadOnlyDictionary<string, string> GetGlobalProperties()
+        {
+            return new Dictionary<string, string>(_currentConfiguration.GlobalProperties);
+        }
+
+        #endregion
+
 #endif
 
         #region INodePacketFactory Members
@@ -487,7 +485,7 @@ namespace Microsoft.Build.CommandLine
         /// <param name="nodeId">The node from which the packet was received.</param>
         /// <param name="packetType">The packet type.</param>
         /// <param name="translator">The translator containing the data from which the packet should be reconstructed.</param>
-        public void DeserializeAndRoutePacket(int nodeId, NodePacketType packetType, INodePacketTranslator translator)
+        public void DeserializeAndRoutePacket(int nodeId, NodePacketType packetType, ITranslator translator)
         {
             _packetFactory.DeserializeAndRoutePacket(nodeId, packetType, translator);
         }
@@ -540,13 +538,9 @@ namespace Microsoft.Build.CommandLine
             // Snapshot the current environment
             _savedEnvironment = CommunicationsUtilities.GetEnvironmentVariables();
 
-#if FEATURE_NAMED_PIPES_FULL_DUPLEX
             string pipeName = "MSBuild" + Process.GetCurrentProcess().Id;
 
             _nodeEndpoint = new NodeEndpointOutOfProcTaskHost(pipeName);
-#else
-            _nodeEndpoint = new NodeEndpointOutOfProcTaskHost(_clientToServerPipeHandle, _serverToClientPipeHandle);
-#endif
             _nodeEndpoint.OnLinkStatusChanged += new LinkStatusChangedDelegate(OnLinkStatusChanged);
             _nodeEndpoint.Listen(this);
 

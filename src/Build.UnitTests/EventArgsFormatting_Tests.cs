@@ -13,7 +13,7 @@ namespace Microsoft.Build.UnitTests
     /// <summary>
     /// These tests are repeated in the Utilities unit test assembly. We know that this isn't
     /// too useful, because both Engine and Utilities pull the code from the same Shared file. But it
-    /// gets a bunch of lines of extra coverage of Engine that we weren't otherwise getting, and 
+    /// gets a bunch of lines of extra coverage of Engine that we weren't otherwise getting, and
     /// in theory at least the implementation in Engine should be tested too.
     /// </summary>
     public class EventArgsFormattingTests
@@ -131,11 +131,10 @@ namespace Microsoft.Build.UnitTests
         public void NullMessage()
         {
             // Testing the method in Shared.EventArgsFormatting directly
-            string s = EventArgsFormatting.FormatEventMessage("error", "CS",
+            EventArgsFormatting.FormatEventMessage("error", "CS",
                       null, "312", "source.cs", 233, 236, 4, 8, 0);
             // No exception was thrown
 
         }
     }
 }
-

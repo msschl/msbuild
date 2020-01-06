@@ -802,6 +802,7 @@ namespace Microsoft.Build.UnitTests
             string fullDotNetFrameworkSdkRegistryPathForV4ToolsOnManagedToolsSDK47 = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Microsoft SDKs\NETFXSDK\4.7\WinSDK-NetFx40Tools-x86";
             string fullDotNetFrameworkSdkRegistryPathForV4ToolsOnManagedToolsSDK471 = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Microsoft SDKs\NETFXSDK\4.7.1\WinSDK-NetFx40Tools-x86";
             string fullDotNetFrameworkSdkRegistryPathForV4ToolsOnManagedToolsSDK472 = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Microsoft SDKs\NETFXSDK\4.7.2\WinSDK-NetFx40Tools-x86";
+            string fullDotNetFrameworkSdkRegistryPathForV4ToolsOnManagedToolsSDK48 = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Microsoft SDKs\NETFXSDK\4.8\WinSDK-NetFx40Tools-x86";
 
             // v4.0
             ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Version40, VisualStudioVersion.Version100).ShouldBe(fullDotNetFrameworkSdkRegistryPathForV4ToolsOnManagedToolsSDK70A);
@@ -864,8 +865,15 @@ namespace Microsoft.Build.UnitTests
             Should.Throw<ArgumentException>(() => ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Version472, VisualStudioVersion.Version120));
             ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Version472, VisualStudioVersion.Version150).ShouldBe(fullDotNetFrameworkSdkRegistryPathForV4ToolsOnManagedToolsSDK472);
 
+            // v4.8
+            Should.Throw<ArgumentException>(() => ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Version48, VisualStudioVersion.Version100));
+            Should.Throw<ArgumentException>(() => ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Version48, VisualStudioVersion.Version110));
+            Should.Throw<ArgumentException>(() => ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Version48, VisualStudioVersion.Version120));
+            Should.Throw<ArgumentException>(() => ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Version48, VisualStudioVersion.Version140));
+            ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Version48, VisualStudioVersion.Version150).ShouldBe(fullDotNetFrameworkSdkRegistryPathForV4ToolsOnManagedToolsSDK48);
+
             // Latest
-            ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Latest, VisualStudioVersion.Version150).ShouldBe(fullDotNetFrameworkSdkRegistryPathForV4ToolsOnManagedToolsSDK472);
+            ToolLocationHelper.GetDotNetFrameworkSdkRootRegistryKey(TargetDotNetFrameworkVersion.Latest, VisualStudioVersion.Version150).ShouldBe(fullDotNetFrameworkSdkRegistryPathForV4ToolsOnManagedToolsSDK48);
         }
 
         [Fact]
@@ -1343,7 +1351,7 @@ namespace Microsoft.Build.UnitTests
 
                 FrameworkNameVersioning frameworkName = new FrameworkNameVersioning(targetFrameworkIdentifier, targetFrameworkVersion, targetFrameworkProfile);
 
-                string path = FrameworkLocationHelper.GenerateReferenceAssemblyPath(targetFrameworkRootPath, frameworkName);
+                FrameworkLocationHelper.GenerateReferenceAssemblyPath(targetFrameworkRootPath, frameworkName);
             }
            );
         }
@@ -1365,7 +1373,7 @@ namespace Microsoft.Build.UnitTests
 
                 FrameworkNameVersioning frameworkName = new FrameworkNameVersioning(targetFrameworkIdentifier, targetFrameworkVersion, targetFrameworkProfile);
 
-                string path = FrameworkLocationHelper.GenerateReferenceAssemblyPath(targetFrameworkRootPath, frameworkName);
+                FrameworkLocationHelper.GenerateReferenceAssemblyPath(targetFrameworkRootPath, frameworkName);
             }
            );
         }
@@ -1391,7 +1399,7 @@ namespace Microsoft.Build.UnitTests
 
                 FrameworkNameVersioning frameworkName = new FrameworkNameVersioning(targetFrameworkIdentifier, targetFrameworkVersion, targetFrameworkProfile);
 
-                string path = FrameworkLocationHelper.GenerateReferenceAssemblyPath(targetFrameworkRootPath, frameworkName);
+                FrameworkLocationHelper.GenerateReferenceAssemblyPath(targetFrameworkRootPath, frameworkName);
             }
            );
         }
@@ -1635,7 +1643,7 @@ namespace Microsoft.Build.UnitTests
                     Directory.CreateDirectory(redist41Directory);
                     File.WriteAllText(redist41, redistString41);
 
-                    string path = ToolLocationHelper.ChainReferenceAssemblyPath(tempDirectoryPath);
+                    ToolLocationHelper.ChainReferenceAssemblyPath(tempDirectoryPath);
                 }
                 finally
                 {
@@ -1672,7 +1680,7 @@ namespace Microsoft.Build.UnitTests
                     Directory.CreateDirectory(redist41Directory);
                     File.WriteAllText(redist41, redistString41);
 
-                    string path = ToolLocationHelper.ChainReferenceAssemblyPath(tempDirectoryPath);
+                    ToolLocationHelper.ChainReferenceAssemblyPath(tempDirectoryPath);
                 }
                 finally
                 {
@@ -1986,7 +1994,6 @@ namespace Microsoft.Build.UnitTests
         [Fact]
         public void GetPathToReferenceAssembliesDefaultLocation99()
         {
-            string targetFrameworkRootPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Reference Assemblies\\Microsoft\\Framework");
             string targetFrameworkIdentifier = ".Net Framework";
             Version targetFrameworkVersion = new Version("99.99");
 
@@ -3546,12 +3553,12 @@ namespace Microsoft.Build.UnitTests
 
                 File.WriteAllText(manifestFile, manifestExtensionSDK);
                 ExtensionSDK extensionSDK = new ExtensionSDK(
-                    $"CppUnitTestFramework, Version={ObjectModelHelpers.MSBuildDefaultToolsVersion}", manifestPath);
+                    $"CppUnitTestFramework, Version={ObjectModelHelpers.CurrentVisualStudioVersion}", manifestPath);
 
                 extensionSDK.Identifier.ShouldBe("CppUnitTestFramework");
                 extensionSDK.MaxPlatformVersion.ShouldBe(new Version("8.0"));
                 extensionSDK.MinVSVersion.ShouldBe(new Version("11.0"));
-                extensionSDK.Version.ShouldBe(new Version(ObjectModelHelpers.MSBuildDefaultToolsVersion));
+                extensionSDK.Version.ShouldBe(new Version(ObjectModelHelpers.CurrentVisualStudioVersion));
             }
             finally
             {
@@ -4183,6 +4190,53 @@ namespace Microsoft.Build.UnitTests
                 Environment.SetEnvironmentVariable("MSBUILDDISABLEREGISTRYFORSDKLOOKUP", null);
             }
         }
+
+        /// <summary>
+        /// Verify that the list of platforms is empty if we ask for an sdk that is not installed.
+        /// </summary>
+        [Fact]
+        [PlatformSpecific(TestPlatforms.AnyUnix)]
+        public void VerifyGetFoldersInVSInstalls_Unix()
+        {
+            ToolLocationHelper.GetFoldersInVSInstalls(null, null, "relativePath").Count().ShouldBe(0);
+        }
+
+        [Fact]
+        [PlatformSpecific(TestPlatforms.Windows)]
+        public void VerifyFindRootFolderWhereAllFilesExist()
+        {
+            // create directories and files in them
+
+            //  root1
+            //     subdir
+            //         file1.txt
+            //     file1.txt
+            //  root2
+            //     subdir
+            //         file2.txt
+            //     file1.txt
+
+            string testDirectoryRoot = Path.Combine(Path.GetTempPath(), "VerifyFindRootFolderWhereAllFilesExist");
+            string[] rootDirectories = new string[] { Path.Combine(testDirectoryRoot, "Root1"), Path.Combine(testDirectoryRoot, "Root2") };
+            
+            for(int i = 0; i < rootDirectories.Count(); i++)
+            {
+                // create directory
+                string subdir = Path.Combine(rootDirectories[i], "Subdir");
+                Directory.CreateDirectory(subdir);
+                var fileInSubDir = string.Format("file{0}.txt", i+1);
+                File.Create(Path.Combine(rootDirectories[i], "file1.txt")).Close();
+                File.Create(Path.Combine(subdir, fileInSubDir)).Close();
+            }
+
+            string roots = string.Join(";", rootDirectories);
+
+            ToolLocationHelper.FindRootFolderWhereAllFilesExist(roots, "file1.txt").ShouldBe(rootDirectories[0]);
+            ToolLocationHelper.FindRootFolderWhereAllFilesExist(roots, @"file1.txt;subdir\file2.txt").ShouldBe(rootDirectories[1]);
+            ToolLocationHelper.FindRootFolderWhereAllFilesExist(roots, @"file1.txt;subdir\file3.txt").ShouldBe(String.Empty);
+            ToolLocationHelper.FindRootFolderWhereAllFilesExist(@"c:<>;" + roots, "file1.txt").ShouldBe(rootDirectories[0]); // should ignore invalid dir
+        }
+
 
 #if FEATURE_REGISTRY_SDKS
         /// <summary>

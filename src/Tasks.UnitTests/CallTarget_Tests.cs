@@ -119,7 +119,7 @@ namespace Microsoft.Build.UnitTests
         [Fact]
         public void NoTargets()
         {
-            MockLogger logger = ObjectModelHelpers.BuildProjectExpectSuccess(@"
+            ObjectModelHelpers.BuildProjectExpectSuccess(@"
 
                 <Project DefaultTargets=`build` ToolsVersion=`msbuilddefaulttoolsversion` xmlns=`msbuildnamespace`>
                     <Target Name=`build` >
@@ -161,7 +161,7 @@ namespace Microsoft.Build.UnitTests
 
             ProjectInstance instance = project.CreateProjectInstance();
             bool success = instance.Build();
-            Assert.True(success); // "Build failed.  See Standard Out tab for details"
+            Assert.True(success); // "Build failed.  See test output (Attachments in Azure Pipelines) for details"
 
             IEnumerable<ProjectItemInstance> targetOutputs = instance.GetItems("myfancytargetoutputs");
 

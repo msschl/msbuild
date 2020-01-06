@@ -85,6 +85,7 @@ namespace Microsoft.Build.Utilities
     {
         public const string AMD64 = "AMD64";
         public const string ARM = "ARM";
+        public const string ARM64 = "ARM64";
         public const string IA64 = "IA64";
         public const string MSIL = "MSIL";
         public const string X86 = "x86";
@@ -168,6 +169,7 @@ namespace Microsoft.Build.Utilities
         Version47 = 11,
         Version471 = 12,
         Version472 = 13,
+        Version48 = 14,
         VersionLatest = 10,
     }
     public partial class TargetPlatformSDK : System.IEquatable<Microsoft.Build.Utilities.TargetPlatformSDK>
@@ -194,6 +196,7 @@ namespace Microsoft.Build.Utilities
         public Microsoft.Build.Framework.IBuildEngine3 BuildEngine3 { get { throw null; } }
         public Microsoft.Build.Framework.IBuildEngine4 BuildEngine4 { get { throw null; } }
         public Microsoft.Build.Framework.IBuildEngine5 BuildEngine5 { get { throw null; } }
+        public Microsoft.Build.Framework.IBuildEngine6 BuildEngine6 { get { throw null; } }
         protected string HelpKeywordPrefix { get { throw null; } set { } }
         public Microsoft.Build.Framework.ITaskHost HostObject { get { throw null; } set { } }
         public Microsoft.Build.Utilities.TaskLoggingHelper Log { get { throw null; } }
@@ -274,6 +277,7 @@ namespace Microsoft.Build.Utilities
         public static void ClearSDKStaticCache() { }
         public static System.Collections.Generic.IDictionary<string, string> FilterPlatformExtensionSDKs(System.Version targetPlatformVersion, System.Collections.Generic.IDictionary<string, string> extensionSdks) { throw null; }
         public static System.Collections.Generic.IList<Microsoft.Build.Utilities.TargetPlatformSDK> FilterTargetPlatformSdks(System.Collections.Generic.IList<Microsoft.Build.Utilities.TargetPlatformSDK> targetPlatformSdkList, System.Version osVersion, System.Version vsVersion) { throw null; }
+        public static string FindRootFolderWhereAllFilesExist(string possibleRoots, string relativeFilePaths) { throw null; }
         public static System.Collections.Generic.IList<Microsoft.Build.Utilities.AssemblyFoldersFromConfigInfo> GetAssemblyFoldersFromConfigInfo(string configFile, string targetFrameworkVersion, System.Reflection.ProcessorArchitecture targetProcessorArchitecture) { throw null; }
         public static string GetDisplayNameForTargetFrameworkDirectory(string targetFrameworkDirectory, System.Runtime.Versioning.FrameworkName frameworkName) { throw null; }
         public static string GetDotNetFrameworkRootRegistryKey(Microsoft.Build.Utilities.TargetDotNetFrameworkVersion version) { throw null; }
@@ -282,6 +286,8 @@ namespace Microsoft.Build.Utilities
         public static string GetDotNetFrameworkSdkRootRegistryKey(Microsoft.Build.Utilities.TargetDotNetFrameworkVersion version) { throw null; }
         public static string GetDotNetFrameworkSdkRootRegistryKey(Microsoft.Build.Utilities.TargetDotNetFrameworkVersion version, Microsoft.Build.Utilities.VisualStudioVersion visualStudioVersion) { throw null; }
         public static string GetDotNetFrameworkVersionFolderPrefix(Microsoft.Build.Utilities.TargetDotNetFrameworkVersion version) { throw null; }
+        public static System.Collections.Generic.IEnumerable<string> GetFoldersInVSInstalls(System.Version minVersion=null, System.Version maxVersion=null, string subFolder=null) { throw null; }
+        public static string GetFoldersInVSInstallsAsString(string minVersionString=null, string maxVersionString=null, string subFolder=null) { throw null; }
         public static string GetLatestSDKTargetPlatformVersion(string sdkIdentifier, string sdkVersion) { throw null; }
         public static string GetLatestSDKTargetPlatformVersion(string sdkIdentifier, string sdkVersion, string[] sdkRoots) { throw null; }
         public static string GetPathToBuildTools(string toolsVersion) { throw null; }
@@ -404,6 +410,7 @@ namespace Microsoft.Build.Utilities
         protected virtual void LogEventsFromTextOutput(string singleLine, Microsoft.Build.Framework.MessageImportance messageImportance) { }
         protected virtual void LogPathToTool(string toolName, string pathToTool) { }
         protected virtual void LogToolCommand(string message) { }
+        protected virtual void ProcessStarted() { }
         protected virtual string ResponseFileEscape(string responseString) { throw null; }
         protected virtual bool SkipTaskExecution() { throw null; }
         protected internal virtual bool ValidateParameters() { throw null; }
